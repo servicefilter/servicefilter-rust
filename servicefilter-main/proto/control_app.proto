@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.github.seal90.servicefilter";
+option java_outer_classname = "ServicefilterConntrolApp";
+
+package servicefilter.control.app.proto;
+
+service ServicefilterManagerService {
+    rpc health(HealthRequest) returns (HealthResponse);
+    rpc Reload(ReloadRequest) returns (ReloadResponse);
+}
+
+// Health
+message HealthRequest {
+}
+
+message HealthResponse {
+    string message = 1;
+}
+
+// Reload
+message ReloadRequest {
+    string service_name = 1;
+}
+
+message ReloadResponse {
+}

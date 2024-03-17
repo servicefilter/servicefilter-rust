@@ -1,0 +1,224 @@
+app_id: app1 
+
+lib_load_path: /Users/seal/work/project/servicefilter-rust/target/debug
+
+control_listen:
+  plugin_name: grpc-protocol
+  protocol: grpc
+  address: "[::1]:50053"
+  args: 
+
+services:
+  - service_id: service-filter-1
+    service_name: service-filter
+    alias_names:
+      - cloud-filter
+    attributes:
+      env: dev
+      second_env: gray
+
+    listen:
+      plugin_name: grpc-protocol
+      protocol: grpc
+      address: "[::1]:50051"
+      args: 
+    # local_listen:
+    #   plugin_name: grpc-protocol
+    #   protocol: grpc
+    #   address: "[::1]:50052"
+    #   args: 
+    # service_listen:
+    #   plugin_name: grpc-protocol
+    #   protocol: grpc
+    #   address: "http://[::1]:50053"
+    #   args: 
+
+    # channel_filter:
+    #   - filter_id: log_filter_channel
+    #     filter_name: log_filter_channel
+    #     plugin_name: log_filter
+    #     args:
+    #   - filter_id: load_balancert_filter_channel_1
+    #     filter_name: load_balancert_filter_channel_1
+    #     plugin_name: load_balancer_filter
+    #     args:
+    #       services: |-
+    #         channels:
+    #           GLOBAL:
+    #             instance_id: global_1
+    #             protocol: redis
+    #             address: 127.0.0.1
+    #             enable_keep_alive: false
+    #             negotiation_type: NONE
+    #             attributes:
+    #           redis:
+    #             instance_id: redis_1
+    #             protocol: redis
+    #             address: redis://127.0.0.1/
+    #             enable_keep_alive: false
+    #             negotiation_type: NONE
+    #             attributes:
+    #           grpc:
+    #             instance_id: grpc_1
+    #             protocol: grpc
+    #             address: http://[::1]:50053
+    #             enable_keep_alive: false
+    #             negotiation_type: NONE
+    #             attributes:
+    #               hello: world
+    #   - filter_id: redis_routing_filter_channel_1
+    #     filter_name: redis_routing_filter_channel_1
+    #     plugin_name: redis_routing_filter
+    #     args:
+    #   - filter_id: grpc_routing_filter_channel_1
+    #     filter_name: grpc_routing_filter_channel_1
+    #     plugin_name: grpc_routing_filter
+    #     args:
+
+    filter:
+      channel:
+        - filter_id: log_filter_channel
+          filter_name: log_filter_channel
+          plugin_name: log_filter
+          args:
+        - filter_id: load_balancert_filter_channel_1
+          filter_name: load_balancert_filter_channel_1
+          plugin_name: load_balancer_filter
+          args:
+            services: |-
+              channels:
+                GLOBAL:
+                  instance_id: global_1
+                  protocol: redis
+                  address: 127.0.0.1
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                redis:
+                  instance_id: redis_1
+                  protocol: redis
+                  address: redis://127.0.0.1/
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                grpc:
+                  instance_id: grpc_1
+                  protocol: grpc
+                  address: http://[::1]:50053
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                    hello: world
+        - filter_id: redis_routing_filter_channel_1
+          filter_name: redis_routing_filter_channel_1
+          plugin_name: redis_routing_filter
+          args:
+        - filter_id: grpc_routing_filter_channel_1
+          filter_name: grpc_routing_filter_channel_1
+          plugin_name: grpc_routing_filter
+          args:
+      
+      prerouting:
+        - filter_id: log_filter_prerouting
+          filter_name: log_filter_prerouting
+          plugin_name: log_filter
+          args:
+        - filter_id: timeout_filter_1
+          filter_name: timeout_filter_1
+          plugin_name: timeout_filter
+          args:
+          
+      input:
+        - filter_id: log_filter_input
+          filter_name: log_filter_input
+          plugin_name: log_filter
+          args:
+        - filter_id: instance_set_filter_1
+          filter_name: instance_set_filter
+          plugin_name: instance_set_filter
+          args:
+        # - filter_id: filter_req_test_filter_1
+        #   filter_name: filter_req_test_filter
+        #   plugin_name: filter_req_test_filter
+        #   args:
+        - filter_id: grpc_routing_filter_input_1
+          filter_name: grpc_routing_filter
+          plugin_name: grpc_routing_filter
+          args:
+
+      local: 
+        - filter_id: log_filter_local
+          filter_name: log_filter_local
+          plugin_name: log_filter
+          args:
+        - filter_id: mock_local_filter
+          filter_name: mock_local_filter
+          plugin_name: mock_local_filter
+          args:
+
+      output:
+        - filter_id: log_filter_output
+          filter_name: log_filter_output
+          plugin_name: log_filter
+          args:
+
+      forward:
+        - filter_id: log_filter_forward
+          filter_name: log_filter_forward
+          plugin_name: log_filter
+          args:
+        - filter_id: forward_switch_filter
+          filter_name: forward_switch_filter
+          plugin_name: forward_switch_filter
+          args: 
+            enable_forward: "true"
+
+      postrouting:
+        - filter_id: log_filter_postrouting
+          filter_name: log_filter_postrouting
+          plugin_name: log_filter
+          args:
+        - filter_id: empty_response_filter
+          filter_name: empty_response_filter
+          plugin_name: empty_response_filter
+          args:
+            resp_status: 200
+            grpc_status: 12
+        - filter_id: load_balancer_client_filter_1
+          filter_name: load_balancer_client_filter_1
+          plugin_name: load_balancer_filter
+          args:
+            services: |-
+              channels:
+                GLOBAL:
+                  instance_id: global_1
+                  protocol: redis
+                  address: 127.0.0.1
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                redis:
+                  instance_id: redis_1
+                  protocol: redis
+                  address: redis://127.0.0.1/
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                grpc:
+                  instance_id: grpc_1
+                  protocol: grpc
+                  address: http://[::1]:50053
+                  enable_keep_alive: false
+                  negotiation_type: NONE
+                  attributes:
+                    hello: world
+        - filter_id: redis_routing_filter_1
+          filter_name: redis_routing_filter_1
+          plugin_name: redis_routing_filter
+          args:
+        - filter_id: grpc_routing_filter_1
+          filter_name: grpc_routing_filter_1
+          plugin_name: grpc_routing_filter
+          args:
+
+        

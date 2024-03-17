@@ -1,0 +1,11 @@
+
+[workspace]
+resolver = "2"
+members = [
+    "servicefilter-core",
+    "servicefilter-filter",
+    "servicefilter-load",
+    "servicefilter-main",
+    "servicefilter-protocol/servicefilter-protocol-grpc",
+    "servicefilter-lib/servicefilter-lib-redis",
+    ]
