@@ -10,8 +10,17 @@ name = "servicefilter"
 path = "src/main.rs"
 
 [dependencies]
-tokio = { version = "1.32.0", features = ["full"] }
-tokio-stream = "0.1"
+tracing = {workspace = true}
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tokio = { workspace = true, features = ["full"] }
+tokio-stream = {workspace = true}
+
+prost = {workspace = true}
+prost-types = {workspace = true}
+hyper = {workspace = true}
+http = {workspace = true}
+tower = {workspace = true}
+tonic = {workspace = true}
 
 thiserror = "1.0.30"
 
@@ -19,16 +28,6 @@ structopt = "0.3.26"
 
 serde = {version = "1", features = ["derive"]}
 serde_yaml = "0.9"
-
-prost = "0.12"
-prost-types = "0.12"
-tonic = "0.10"
-hyper = "0.14"
-tower = "0.4"
-http = "0.2"
-
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dependencies.servicefilter_core]
 path="../servicefilter-core"

@@ -6,10 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1"
+async-trait = {workspace = true}
 anyhow="1.0.56"
 
-http = "0.2"
-hyper = "0.14.26"
-tonic = "0.10"
-tower = "0.4"
+hyper = {workspace = true}
+http = {workspace = true}
+tower = {workspace = true}
+tonic = {workspace = true}
