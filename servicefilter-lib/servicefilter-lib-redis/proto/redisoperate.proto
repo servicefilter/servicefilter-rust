@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "io.github.seal90.servicefilter.sdk.redis";
-option java_outer_classname = "RedisOperateService";
+option java_outer_classname = "RedisOperateClient";
 
 package servicefilter.sdk.redis;
 

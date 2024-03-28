@@ -24,11 +24,11 @@ impl LoadFactory {
         if let Some(filter) = filter_op {
             return Some(filter);
         }
-        let filter_op = loading::load_filter(self.base_path.clone(), String::from(""), filter_plugin_name, service_config_base, filter_config, channel_gen).await;
+        let filter_op = loading::load_filter(self.base_path.clone(), String::from(""), filter_plugin_name.clone(), service_config_base, filter_config, channel_gen).await;
         if let Some(filter) = filter_op {
             return Some(filter);
         }
-        return Some(Box::new(NoopFilter::new()));
+        return Some(Box::new(NoopFilter::new(filter_plugin_name.clone())));
     }
 
     pub async fn load_req_filter(&self, filter_plugin_name: &String, service_config_base: Arc<ServiceConfig>, filter_config: FilterConfig, ) -> Option<Box<dyn ServicefilterFilter>> {
@@ -38,7 +38,7 @@ impl LoadFactory {
             return Some(filter);
         }
         
-        return Some(Box::new(NoopFilter::new()));
+        return Some(Box::new(NoopFilter::new(filter_plugin_name.clone())));
     }
 
     

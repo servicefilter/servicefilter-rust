@@ -25,6 +25,28 @@
                 // "RUST_LOG": ""
                 "RUST_BACKTRACE": "1"
             }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "servicefilter-server",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=servicefilter",
+                    "--package=servicefilter_main"
+                ],
+                "filter": {
+                    "name": "servicefilter",
+                    "kind": "bin"
+                }
+            },
+            "args": ["-c", "${workspaceFolder}/../example/service-filter-server.yaml"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                // "RUST_LOG": ""
+                "RUST_BACKTRACE": "1"
+            }
         }
     ]
 }

@@ -3,7 +3,7 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use servicefilter_core::filter::{ServicefilterChain, ServicefilterExchange, ServicefilterFilter};
 
-use redis::Commands;
+use redis::AsyncCommands;
 use redis_operate::{GetRequest,GetResponse, SetRequest, SetResponse, DeleteRequest, DeleteResponse, ExistsRequest, ExistsResponse, ExpireRequest, ExpireResponse, KeysRequest, KeysResponse, Message, SubscribeRequest, PublishRequest, PublishResponse, redis_operate_service_server::{RedisOperateServiceServer, RedisOperateService}};
 
 use tokio::sync::mpsc;
@@ -62,7 +62,7 @@ impl RedisClient {
     
 }
 
-#[async_trait]
+#[tonic::async_trait]
 impl RedisOperateService for RedisClient {
 
     async fn get(
@@ -73,9 +73,9 @@ impl RedisOperateService for RedisClient {
         let key = req.key;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let rv: String = con.get(key).unwrap();
+        let rv: String = con.get(key).await.unwrap();
         Ok(tonic::Response::new(GetResponse{result: Some(redis_operate::get_response::Result::Value(rv))}))
     }
 
@@ -88,9 +88,9 @@ impl RedisOperateService for RedisClient {
         let val = req.value;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
         
-        let _:() = con.set(key, val).unwrap();
+        let _:() = con.set(key, val).await.unwrap();
         Ok(tonic::Response::new(SetResponse{success: true}))
     }
 
@@ -102,9 +102,9 @@ impl RedisOperateService for RedisClient {
         let key = req.key;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let _:() = con.del(key).unwrap();
+        let _:() = con.del(key).await.unwrap();
         Ok(tonic::Response::new(DeleteResponse{deleted: 1}))
     }
 
@@ -116,9 +116,9 @@ impl RedisOperateService for RedisClient {
         let keys = req.keys;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let count = con.exists(keys).unwrap();
+        let count = con.exists(keys).await.unwrap();
         Ok(tonic::Response::new(ExistsResponse{count: count}))
     }
 
@@ -131,9 +131,9 @@ impl RedisOperateService for RedisClient {
         let seconds = req.seconds as i64;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let _:() = con.expire(key, seconds).unwrap();
+        let _:() = con.expire(key, seconds).await.unwrap();
         Ok(tonic::Response::new(ExpireResponse{success: true}))
     }
 
@@ -145,9 +145,9 @@ impl RedisOperateService for RedisClient {
         let pattern = req.pattern;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let keys = con.keys(pattern).unwrap();
+        let keys = con.keys(pattern).await.unwrap();
         Ok(tonic::Response::new(KeysResponse{keys: keys}))
     }
 
@@ -195,9 +195,9 @@ impl RedisOperateService for RedisClient {
         let data = req.data;
 
         let client = redis::Client::open(self.addr.clone()).unwrap();
-        let mut con = client.get_connection().unwrap();
+        let mut con = client.get_async_connection().await.unwrap();
 
-        let success = con.publish(channel, data).unwrap();
+        let success = con.publish(channel, data).await.unwrap();
         Ok(tonic::Response::new(PublishResponse{success: success}))
     }
     
