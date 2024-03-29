@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.github.seal90.servicefilter.sdk.redis";
+option java_outer_classname = "RedisOperateClient";
+
+package servicefilter.sdk.redis;
+
+// Service definition for Subscribe and Publish
+service RedisOperateService {
+
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Set(SetRequest) returns (SetResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc Exists(ExistsRequest) returns (ExistsResponse);
+  rpc Expire(ExpireRequest) returns (ExpireResponse);
+  rpc Keys(KeysRequest) returns (KeysResponse);
+
+  // RPC service for subscribing to a channel. This is a streaming RPC, where the server sends messages to the client.
+  rpc Subscribe(SubscribeRequest) returns (stream Message);
+
+  // RPC service for publishing a message to a channel.
+  rpc Publish(PublishRequest) returns (PublishResponse);
+
+  // Optional: RPC service for unsubscribing from a channel
+  // rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
+}
+
+// Get
+message GetRequest {
+  string key = 1;
+}
+
+message GetResponse {
+  oneof result {
+    string value = 1;
+    NullValue null_value = 2;
+  }
+}
+
+// Set
+message SetRequest {
+  string key = 1;
+  string value = 2;
+  int32 expiration = 3; // Optional expiration in seconds
+}
+
+message SetResponse {
+  bool success = 1;
+}
+
+// Delete
+message DeleteRequest {
+  string key = 1;
+}
+
+message DeleteResponse {
+  int32 deleted = 1;
+}
+
+// Exists
+message ExistsRequest {
+  repeated string keys = 1;
+}
+
+message ExistsResponse {
+  int32 count = 1;
+}
+
+// Expire
+message ExpireRequest {
+  string key = 1;
+  int32 seconds = 2;
+}
+
+message ExpireResponse {
+  bool success = 1;
+}
+
+// Keys
+message KeysRequest {
+  string pattern = 1;
+}
+
+message KeysResponse {
+  repeated string keys = 1;
+}
+
+message NullValue {}
+
+// Message representing a data published in a channel
+message Message {
+  string channel = 1;
+  string data = 2;
+}
+
+// Request to subscribe to a specific channel
+message SubscribeRequest {
+  string channel = 1;
+}
+
+// Request to publish data to a channel
+message PublishRequest {
+  string channel = 1;
+  string data = 2;
+}
+
+message PublishResponse {
+  bool success = 1;
+}
+
+// Request to unsubscribe from a channel
+message UnsubscribeRequest {
+  string channel = 1;
+}
+
+message UnsubscribeResponse {
+  bool success = 1;
+}

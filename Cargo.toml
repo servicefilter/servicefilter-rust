@@ -7,7 +7,7 @@ members = [
     "servicefilter-load",
     "servicefilter-main",
     "servicefilter-protocol/servicefilter-protocol-grpc",
-    "servicefilter-lib/servicefilter-lib-redis",
+    "servicefilter-lib/servicefilter-lib-redis", "servicefilter-lib/servicefilter-lib-mock-server",
     ]
 
 

@@ -31,6 +31,7 @@ impl LoadFactory {
         return Some(Box::new(NoopFilter::new(filter_plugin_name.clone())));
     }
 
+    // TODO remove 
     pub async fn load_req_filter(&self, filter_plugin_name: &String, service_config_base: Arc<ServiceConfig>, filter_config: FilterConfig, ) -> Option<Box<dyn ServicefilterFilter>> {
 
         let filter_op = servicefilter_filter::load_req_filter(filter_plugin_name.clone(), service_config_base.clone(), filter_config.clone(),).await;

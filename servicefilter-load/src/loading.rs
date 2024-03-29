@@ -30,7 +30,12 @@ pub async fn load_filter(app_sys_load_path: String, extend_path: String,
                         let metadata_result = entry.metadata().await;
                         if let Ok(metadata) = metadata_result {
                             if metadata.is_file() {
-                                return load_lib(entry.path().into_os_string().into_string().unwrap(), filter_plugin_name, service_config_base, filter_config, channel_gen,);
+                                let filter = load_lib(
+                                    entry.path().into_os_string().into_string().unwrap(), filter_plugin_name.clone(), 
+                                    service_config_base.clone(), filter_config.clone(), channel_gen.clone(),);
+                                if filter.is_some() {
+                                    return filter;
+                                }
                             }
                         } else {
                             continue;
