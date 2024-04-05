@@ -19,7 +19,7 @@ In order to implement applications using a single protocol for services, create 
 
 # Getting started
 ## Concept
-Applications are designed to serve multiple business services simultaneously. Business services can be provided in the form of network services or plug-ins. The application provides 6 types of filters to handle requests. The application can load a crate that implements the filter trait to handle the request (do not panic in the crate, otherwise it will cause the entire application to stop https://rust-lang.zulipchat.com/#narrow/stream/210922-project-ffi-unwind).
+Applications are designed to serve multiple business services simultaneously. Business services can be provided in the form of network services or plug-ins. The application provides 6 types of filters to handle requests. The application can load a crate that implements the filter trait to handle the request (do not panic in the crate, otherwise it will cause the entire application to stop https://rust-lang.zulipchat.com/#narrow/stream/210922-project-ffi-unwind) and https://github.com/rust-lang/rust/issues/83994.
 
 ## Running
 The sample configuration file required for application startup is placed in ${workspaceFolder}/servicefilter-main/src/service-filter-default.yaml .
@@ -33,6 +33,16 @@ If you use vscod to debug the application, .vscode/launch.json already configure
 * servicefilter-load: Load crates provided by servicefilter or third parties, the trait is defined in servicefilter-core
 * servicefilter-main: Servicefilter application starts crate
 * servicefilter-protocol: External and internal network protocols provided by proxy services
+
+# TODO
+* Dynamic configuration
+* Add wasm support
+* Add metrics - prometheus
+* Add graceful upgrade
+    * filter change
+    * restart without close client connection
+        * systemfd — a systemd compatible socket server that passes sockets to a subprocess
+        * listenfd — a crate to consume externally passed sockets
 
 # Dependencies
 
