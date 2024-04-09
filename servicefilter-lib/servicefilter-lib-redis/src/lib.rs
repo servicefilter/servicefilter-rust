@@ -6,11 +6,11 @@ use servicefilter_core::{filter::ServicefilterFilter, service::{FilterConfig, Se
 mod redis_routing_filter;
 
 #[no_mangle]
-pub extern "C" fn load_filter(filter_plugin_name: String, service_config_base: Arc<ServiceConfig>, filter_config: FilterConfig, channel_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>,) -> Option<Box<dyn ServicefilterFilter>> {
+pub extern "C" fn load_filter(filter_plugin_name: String, service_config_base: Arc<ServiceConfig>, filter_config: FilterConfig, channel_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>,) -> Option<*mut dyn ServicefilterFilter> {
 
     match filter_plugin_name.as_str() {
         "redis_routing_filter" => {
-            return Some(Box::new(RedisRoutingFilter::new()));
+            return Some(Box::into_raw(Box::new(RedisRoutingFilter::new())));
         },
         _ => {return None;},
     }

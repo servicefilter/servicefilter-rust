@@ -65,12 +65,15 @@ fn load_lib(file: String, filter_plugin_name: String,
             // load factory func
             let load_filter_symbol_result: std::result::Result<Symbol<unsafe extern "C" fn(filter_plugin_name: String, 
                 service_config_base: Arc<ServiceConfig>, filter_config: FilterConfig, 
-                channel_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>,) -> Option<Box<dyn ServicefilterFilter>>>,  libloading::Error> = lib.get(b"load_filter");
+                channel_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>,) -> Option<*mut dyn ServicefilterFilter>>,  libloading::Error> = lib.get(b"load_filter");
             
             if let Ok(load_filter_symbol) = load_filter_symbol_result {
-                let filter = load_filter_symbol(filter_plugin_name, service_config_base, filter_config, channel_gen);
+                let filter_op = load_filter_symbol(filter_plugin_name, service_config_base, filter_config, channel_gen);
                 
-                return filter;
+                match filter_op {
+                    None => return None,
+                    Some(filter) => return Some(Box::from_raw(filter)),
+                }
             }
         }
     }
