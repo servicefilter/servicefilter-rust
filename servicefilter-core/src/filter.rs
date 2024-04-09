@@ -35,7 +35,7 @@ pub trait ServicefilterExchange : Send {
     fn get_target_service_id(&self) -> &Option<String>;
     fn get_target_service_name(&self) -> &String;
 
-    fn get_req(&mut self) -> Option<hyper::Request<tonic::body::BoxBody>>;
+    fn get_req(&mut self) -> Option<http::Request<tonic::body::BoxBody>>;
 
     fn get_resp(&mut self) -> Option<tonic::codegen::BoxFuture<http::Response<tonic::body::BoxBody>, std::convert::Infallible>>;
     fn set_resp(&mut self, resp : tonic::codegen::BoxFuture<http::Response<tonic::body::BoxBody>, std::convert::Infallible>,);

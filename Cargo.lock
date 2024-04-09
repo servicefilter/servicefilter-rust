@@ -1104,7 +1104,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "http",
- "hyper",
  "tonic",
  "tower",
 ]

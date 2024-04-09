@@ -9,7 +9,6 @@ edition = "2021"
 async-trait = {workspace = true}
 anyhow="1.0.56"
 
-hyper = {workspace = true}
 http = {workspace = true}
 tower = {workspace = true}
 tonic = {workspace = true}

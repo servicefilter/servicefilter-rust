@@ -188,7 +188,7 @@ mod chan_manager {
         target_service_name: String,
         attributes: HashMap<String, String>,
         // TODO change to common req and resp like req{header:{key:value}, body: stream<Bytes>} resp{header:{key:value}, body: Future<Result<stream<Bytes>>, Status>}
-        req: Option<hyper::Request<tonic::body::BoxBody>>,
+        req: Option<http::Request<tonic::body::BoxBody>>,
         resp: Option<tonic::codegen::BoxFuture<http::Response<tonic::body::BoxBody>, std::convert::Infallible>>,
         service_instance: Option<Box<dyn ServiceInstance>>,
     }
@@ -197,7 +197,7 @@ mod chan_manager {
         pub fn new(target_service_id: Option<String>,
             target_service_name: String,
             attributes: HashMap<String, String>,
-            req: Option<hyper::Request<tonic::body::BoxBody>>,
+            req: Option<http::Request<tonic::body::BoxBody>>,
             resp: Option<tonic::codegen::BoxFuture<http::Response<tonic::body::BoxBody>, std::convert::Infallible>>,
             service_instance: Option<Box<dyn ServiceInstance>>,) -> Self {
             Self { target_service_id, target_service_name, attributes, req, resp, service_instance }
@@ -214,7 +214,7 @@ mod chan_manager {
             return &self.target_service_name;
         }
     
-        fn get_req(&mut self) -> Option<hyper::Request<tonic::body::BoxBody>> {
+        fn get_req(&mut self) -> Option<http::Request<tonic::body::BoxBody>> {
             replace(&mut self.req, None)
         }
     
