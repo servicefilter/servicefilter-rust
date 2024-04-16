@@ -6,7 +6,7 @@ use servicefilter_core::{service::ServiceConfigOpreate, Result};
 use servicefilter_load::LoadFactory;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
-use crate::{cmd::{cli::Cli, config::{ServicefilterAppConfig, ServicefilterServiceConfig}}, service::{ServiceOperateHandler, ServiceRunHandler}};
+use crate::{cmd::{cli::Cli, config::{ServicefilterAppConfig, ServicefilterServiceConfig}}, service::ServiceRunHandler};
 
 use self::control::ControlApp;
 
@@ -81,7 +81,7 @@ pub struct ServicefilterApp {
 
     shutdown_complete_tx: mpsc::Sender<()>,
 
-    pub services: Arc<RwLock<HashMap<String, ServiceOperateHandler>>>,
+    pub services: Arc<RwLock<HashMap<String, ServiceRunHandler>>>,
 
     load_factory: Arc<LoadFactory>,
 }
@@ -102,14 +102,46 @@ impl ServicefilterApp {
     }
 
     pub async fn reload(&self, ) -> Result<()> {
-        // panic!("hello");
+        let saved_config = &self.config;
+        let config = ServicefilterAppConfig::from_cli(&self.cli).await?;
+        let service_configs = &config.services;
+        let mut write = self.services.write().await;
+
+        for service_config in service_configs {
+            let service_op = write.get(&service_config.service_id);
+            match service_op {
+                None => {
+                    let service_operate = Self::build_handler(saved_config, service_config, self.load_factory.clone()).await;
+            
+                    write.insert(String::from(&service_config.service_id), service_operate);
+                },
+                Some(handler) => {
+                    // TODO timeout？
+                    handler.reload(service_config.clone()).await;
+                }
+            }
+        }
+
+        let to_remove_keys: Vec<_> = write.keys()
+            .filter(|&key| !service_configs.iter().any(|config| &config.service_id == key))
+            .cloned()
+            .collect();
+        
+        for key in to_remove_keys {
+            let handler_op = write.remove(&key);
+            if let Some(handler) = handler_op {
+                handler.stop().await;
+            }
+        }
+
+        drop(write);
         return Ok(());
     }
 
     async fn start_service(
         config: &ServicefilterAppConfig,
         // service_configs: &Vec<ServicefilterServiceConfig>, 
-        services: Arc<RwLock<HashMap<String, ServiceOperateHandler>>>,
+        services: Arc<RwLock<HashMap<String, ServiceRunHandler>>>,
         // TODO graceful shutdown
         notify_shutdown: broadcast::Sender<()>,
         shutdown_complete_tx: mpsc::Sender<()>,
@@ -117,31 +149,23 @@ impl ServicefilterApp {
         let service_configs = &config.services;
         let mut write = services.write().await;
         for service_config in service_configs {
-            
-            let mut config_operate = ServiceConfigOpreate {
-                config_modify: Box::new(|_|{}),
-                config_extract: Box::new(||{HashMap::new()}),
-                config_check: Box::new(|_|{}),
-            };
-            let config_operate_mut = &mut config_operate;
-            
-            let service_run_handler = ServiceRunHandler::new(
-                config.app_id.clone(),
-                service_config.clone(),
-                config_operate_mut,
-            );
 
-            let load_factory = load_factory.clone();
-            let service_task = tokio::spawn(async move {
-                tokio::select! {
-                    _ = service_run_handler.run(load_factory) => {}
-                }
-            });
-
-            let service_operate = ServiceOperateHandler::new(service_task, config_operate,);
+            let service_operate = Self::build_handler(config, service_config, load_factory.clone()).await;
             
-            write.insert(String::from(&service_config.service_name), service_operate);
+            write.insert(String::from(&service_config.service_id), service_operate);
         }
         drop(write);
     }
+
+    async fn build_handler(config: &ServicefilterAppConfig, service_config: &ServicefilterServiceConfig, load_factory: Arc<LoadFactory>,) -> ServiceRunHandler {
+        let mut service_run_handler = ServiceRunHandler::new(
+            config.app_id.clone(),
+            service_config.clone(),
+            load_factory.clone(),
+        );
+        
+        let _ = service_run_handler.run().await;
+        return service_run_handler;
+    }
+
 }

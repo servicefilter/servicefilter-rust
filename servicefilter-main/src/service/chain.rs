@@ -3,14 +3,36 @@ use std::sync::{Arc, RwLock};
 use servicefilter_core::{filter::{FilterKind, ServicefilterChain, ServicefilterExchange, ServicefilterFilter}, service::ServiceGenChain};
 use tonic::async_trait;
 
+pub struct RoutingGenChainDyn {
+    routing_chain: Arc<tokio::sync::RwLock<Box<dyn RoutingChainGenKind>>>,
+    filter_kind: FilterKind
+}
+
+impl RoutingGenChainDyn {
+    pub fn new(
+        routing_chain: Arc<tokio::sync::RwLock<Box<dyn RoutingChainGenKind>>>,
+        filter_kind: FilterKind
+    ) -> Self {
+        Self { routing_chain, filter_kind }
+    }
+}
+
+#[async_trait]
+impl ServiceGenChain for RoutingGenChainDyn {
+
+    async fn gen_chain(&self) -> Box<dyn ServicefilterChain> {
+        return self.routing_chain.read().await.gen_kind_chain(self.filter_kind).await;
+    }
+}
+
 pub struct RoutingGenChain {
-    routing_chain: Arc<tokio::sync::RwLock<RoutingChainGen>>,
+    routing_chain: Arc<tokio::sync::RwLock<Box<RoutingChainGen>>>,
     filter_kind: FilterKind
 }
 
 impl RoutingGenChain {
     pub fn new(
-        routing_chain: Arc<tokio::sync::RwLock<RoutingChainGen>>,
+        routing_chain: Arc<tokio::sync::RwLock<Box<RoutingChainGen>>>,
         filter_kind: FilterKind
     ) -> Self {
         Self { routing_chain, filter_kind }
@@ -21,7 +43,35 @@ impl RoutingGenChain {
 impl ServiceGenChain for RoutingGenChain {
 
     async fn gen_chain(&self) -> Box<dyn ServicefilterChain> {
-        return self.routing_chain.read().await.gen_kind_chain(self.filter_kind);
+        return self.routing_chain.read().await.gen_kind_chain(self.filter_kind).await;
+    }
+}
+
+#[async_trait]
+pub trait RoutingChainGenKind: Send + Sync {
+    async fn gen_kind_chain(&self, filter_kind: FilterKind) -> Box<dyn ServicefilterChain>;
+}
+
+pub struct ProxyRoutingChainGen {
+    chan_gen: Arc<tokio::sync::RwLock<Box<RoutingChainGen>>>,
+}
+
+impl ProxyRoutingChainGen {
+    pub fn new(
+        chan_gen: Arc<tokio::sync::RwLock<Box<RoutingChainGen>>>,
+    ) -> Self {
+        Self{
+            chan_gen
+        }
+    }
+}
+
+#[async_trait]
+impl RoutingChainGenKind for ProxyRoutingChainGen {
+    async fn gen_kind_chain(&self, filter_kind: FilterKind) -> Box<dyn ServicefilterChain> {
+        let chan_gen_read = self.chan_gen.read().await;
+        let chain = chan_gen_read.gen_kind_chain(filter_kind).await;
+        return chain;
     }
 }
 
@@ -70,8 +120,12 @@ impl RoutingChainGen {
     pub fn rebuild_local(&mut self, local_filters: Arc<Vec<Box<dyn ServicefilterFilter>>>,) {
         self.local_filters = local_filters;
     }
-    
-    fn gen_kind_chain(&self, filter_kind: FilterKind) -> Box<dyn ServicefilterChain> {
+
+}
+
+#[async_trait]
+impl RoutingChainGenKind for RoutingChainGen {
+    async fn gen_kind_chain(&self, filter_kind: FilterKind) -> Box<dyn ServicefilterChain> {
         return Box::new(VirtualServicefilterRoutingChain::new(filter_kind, self));
     }
 

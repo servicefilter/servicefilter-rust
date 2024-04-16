@@ -11,12 +11,15 @@ use tokio::{sync::RwLock, task::JoinHandle};
 
 use crate::cmd::config::{ServicefilterFilterDefineConfig, ServicefilterServiceConfig};
 
-use self::{chain::{RoutingChainGen, RoutingGenChain}, channel::{FilterReqChannelGen, FilterReqGenChain}};
+use self::{chain::{ProxyRoutingChainGen, RoutingChainGen, RoutingChainGenKind, RoutingGenChain, RoutingGenChainDyn}, channel::{FilterReqChannelGen, FilterReqGenChain}};
 
 
 pub struct ServiceRunHandler {
     app_id: String, 
     service_config: ServicefilterServiceConfig,
+    load_factory: Arc<LoadFactory>,
+    chan_gen: Option<Arc<RwLock<Box<dyn RoutingChainGenKind>>>>,
+    handler: Option<JoinHandle<()>>,
 }
 
 impl ServiceRunHandler {
@@ -24,12 +27,12 @@ impl ServiceRunHandler {
     pub fn new(
         app_id: String,
         service_config: ServicefilterServiceConfig,
-        config_operate: &mut ServiceConfigOpreate,
+        load_factory: Arc<LoadFactory>,
     ) -> Self {
-        Self { app_id, service_config,  }
+        Self { app_id, service_config, load_factory, chan_gen: None, handler: None}
     }
 
-    pub async fn run(&self, load_factory: Arc<LoadFactory>) -> Result<()> {
+    pub async fn run(&mut self,) -> Result<()> {
         let service_config = &self.service_config;
         let service_listen = &self.service_config.service_listen;
 
@@ -45,46 +48,67 @@ impl ServiceRunHandler {
             service_config.attributes.clone(),
             service_listen_config,
         ));
-        let routing_chan_gen = Self::build_chain(self.service_config.clone(), service_config_base.clone(), load_factory.clone()).await;
-        let chain_gen = Arc::new(RwLock::new(routing_chan_gen));
-        let out_gen_chain : Box<dyn ServiceGenChain> = Box::new(RoutingGenChain::new(chain_gen.clone(), FilterKind::OUTPUT));
-        let out_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>= Arc::new(Box::new(FilterReqChannelGen::new(Arc::new(out_gen_chain))));
-        let local_filters: Arc<Vec<Box<dyn ServicefilterFilter>>> = Arc::new(Self::build_filter(&load_factory, &service_config_base, &service_config.filter.local, &out_gen).await);
-        let mut chain_gen_write_lock = chain_gen.write().await;
-        chain_gen_write_lock.rebuild_local(local_filters);
-        drop(chain_gen_write_lock);
+
+        let chain_gen_kind = self.build_chain_gen(service_config_base.clone(), self.service_config.clone()).await;
+
+        let chain_gen = Arc::new(RwLock::new(chain_gen_kind));
 
         let listen = &service_config.listen;
         let listen_config = ProtocolListenConfig::new(listen.protocol.clone(), listen.address.clone(), listen.args.clone());
-        let server = load_factory.load_protocol_server(&listen.plugin_name).unwrap();
-        let gen_chain: Box<dyn ServiceGenChain> = Box::new(RoutingGenChain::new(chain_gen.clone(), FilterKind::PREROUTING));
+        let server = self.load_factory.load_protocol_server(&listen.plugin_name).unwrap();
+        // ProxyRoutingChainGen::new(chain_gen as Arc<tokio::sync::RwLock<Box<dyn RoutingChainGenKind>>> )
+        let gen_chain: Box<dyn ServiceGenChain> = Box::new(RoutingGenChainDyn::new(chain_gen.clone(), FilterKind::PREROUTING));
         let start = server.start(service_config_base.clone(), listen_config, gen_chain);
         if let Err(e) = start {
             return Err(e);
         }
 
         let local_listen = &service_config.local_listen;
+        let handler;
         if let Some(local_listen) = local_listen {
             let local_listen_config = ProtocolListenConfig::new(local_listen.protocol.clone(), local_listen.address.clone(), local_listen.args.clone());
-            let local_server = load_factory.load_protocol_server(&local_listen.plugin_name).unwrap();
-            let local_gen_chain : Box<dyn ServiceGenChain> = Box::new(RoutingGenChain::new(chain_gen, FilterKind::OUTPUT));
+            let local_server = self.load_factory.load_protocol_server(&local_listen.plugin_name).unwrap();
+            let local_gen_chain : Box<dyn ServiceGenChain> = Box::new(RoutingGenChainDyn::new(chain_gen.clone(), FilterKind::OUTPUT));
             let local_start = local_server.start(service_config_base.clone(), local_listen_config, local_gen_chain);
             if let Err(e) = local_start {
                 return Err(e);
             }
-    
-            tokio::select! {
-                _ = start.unwrap() => {},
-                _ = local_start.unwrap() => {},
-            }
+            handler = tokio::spawn(async move {
+                tokio::select! {
+                    _ = start.unwrap() => {},
+                    _ = local_start.unwrap() => {},
+                }
+            });
+            
         } else {
-            tokio::select! {
-                _ = start.unwrap() => {},
-            }
+            handler = tokio::spawn(async move {
+                tokio::select! {
+                    _ = start.unwrap() => {},
+                }
+            });
+            
         }
         
+        self.chan_gen = Some(chain_gen.clone());
+        self.handler = Some(handler);
         
         return Ok(());
+    }
+
+    async fn build_chain_gen(&self, service_config_base: Arc<ServiceConfig>, service_config: ServicefilterServiceConfig,) -> Box<dyn RoutingChainGenKind> {
+        let routing_chan_gen = Self::build_chain(service_config.clone(), service_config_base.clone(), self.load_factory.clone()).await;
+        let chain_gen = Arc::new(RwLock::new(Box::new(routing_chan_gen)));
+
+        let out_gen_chain : Box<dyn ServiceGenChain> = Box::new(RoutingGenChain::new(chain_gen.clone(), FilterKind::OUTPUT));
+        let out_gen : Arc<Box<dyn servicefilter_core::channel::FilterReqChannelGen>>= Arc::new(Box::new(FilterReqChannelGen::new(Arc::new(out_gen_chain))));
+        let local_filters: Arc<Vec<Box<dyn ServicefilterFilter>>> = Arc::new(Self::build_filter(&self.load_factory, &service_config_base, &service_config.filter.local, &out_gen).await);
+        let mut chain_gen_write_lock = chain_gen.write().await;
+        chain_gen_write_lock.rebuild_local(local_filters);
+        drop(chain_gen_write_lock);
+
+        let proxy_chain_gen = ProxyRoutingChainGen::new(chain_gen);
+
+        return Box::new(proxy_chain_gen);
     }
 
     async fn build_chain(service_config: ServicefilterServiceConfig, service_config_base: Arc<ServiceConfig>, load_factory: Arc<LoadFactory>) -> RoutingChainGen {
@@ -140,21 +164,40 @@ impl ServiceRunHandler {
         }
         return filters;
     }
-}
 
-pub struct ServiceOperateHandler {
-    pub handler: JoinHandle<()>,
-    pub opreate: ServiceConfigOpreate,
-}
+    pub async fn reload(&self, service_config: ServicefilterServiceConfig, ) {
 
-impl ServiceOperateHandler {
-    pub fn new(
-        handler: JoinHandle<()>,
-        opreate: ServiceConfigOpreate,
-    ) -> Self {
-        Self {
-            handler,
-            opreate,
+        // TODO graceful stop
+        if let Some(chan_gen_reload) = &self.chan_gen {
+            let service_listen = &self.service_config.service_listen;
+
+            let mut service_listen_config: Option<ServiceListenConfig> = None;
+            if let Some(service_listen) = service_listen {
+                service_listen_config = Some(ServiceListenConfig::new(service_listen.protocol.clone(), service_listen.address.clone()));
+            }
+
+            let service_config_base = Arc::new(ServiceConfig::new(
+                service_config.service_id.clone(),
+                service_config.service_name.clone(),
+                service_config.alias_names.clone(),
+                service_config.attributes.clone(),
+                service_listen_config,
+            ));
+
+            let chain_gen = self.build_chain_gen(service_config_base.clone(), service_config.clone()).await;
+
+            let mut chan_gen_old_write = chan_gen_reload.write().await;
+            *chan_gen_old_write = chain_gen;
+
+            // TODO self.service_config = service_config
+
+        }
+    }
+
+    pub async fn stop(&self, ) {
+        // TODO graceful stop
+        if let Some(thread_handler) = &self.handler {
+            thread_handler.abort();
         }
     }
 }
